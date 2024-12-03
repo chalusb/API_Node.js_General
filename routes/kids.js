@@ -287,6 +287,7 @@ router.post('/setAsist', async (req, res) => {
         const obj_ins = kids_data.map(e => Object.values(e));
         // Actualizar el archivo de Google Sheets con los nuevos datos
         const res_uk = await goo.updateFile(g_files.fileId, "Hoja1", "A2:K", obj_ins);
+        const res_ukRes = await goo.updateFile(g_files.fileIdResp, "Hoja1", "A2:K", obj_ins);
 
         // Devolver una respuesta exitosa con los registros actualizados
         return res.status(200).json({ status: 'success', data: arr_kids });

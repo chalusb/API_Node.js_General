@@ -21,6 +21,7 @@ module.exports = {
     g_files: {
         folderId: process.env.G_FOLDER_ID,
         fileId: process.env.G_FILE_ID,
+        fileIdResp: process.env.G_FILE_ID_RESPALDO,
         fileIdBoda: process.env.G_FILE_ID_BODA,
         rangeGuide: process.env.G_GUIDE_RANGE,
         statusRange: process.env.G_STATUS_RANGE
