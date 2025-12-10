@@ -1,4 +1,4 @@
-'use strict'
+﻿'use strict'
 
 const express = require('express');
 const http = require('http');
@@ -35,6 +35,9 @@ app.use((req, res, next) => {
 //Routes
 app.use('/kids',require('./routes/kids'));
 app.use('/boda',require('./routes/boda'));
+app.use('/exagono',require('./routes/exagono'));
+app.use('/AppP',require('./routes/AppPendientes'));
+app.use('/AppP', require('./routes/pushNotifications'));
 
 //Public
 app.use(express.static('public'));
@@ -42,3 +45,4 @@ app.use(express.static('public'));
 const server = http.createServer(app);
 
 module.exports = server;
+app.use('/AppP', require('./routes/AppPendientes'));

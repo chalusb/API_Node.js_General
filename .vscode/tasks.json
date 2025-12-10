@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Codex (no approvals)",
+      "type": "shell",
+      "command": "\"C:/Users/PC/.vscode/extensions/openai.chatgpt-0.4.12-win32-x64/bin/windows-x86_64/codex.exe\" --dangerously-bypass-approvals-and-sandbox",
+      "options": {
+        "env": {
+          "CODEX_APPROVAL_POLICY": "never"
+        }
+      },
+      "presentation": { "reveal": "always", "panel": "new" },
+      "problemMatcher": []
+    }
+  ]
+}

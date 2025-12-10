@@ -16,13 +16,14 @@ module.exports = {
         email: process.env.G_CLIENT_EMAIL, 
         key: process.env.G_PRIVATE_KEY,
         keyId: process.env.G_PRIVATE_KEY_ID,
-        scopes:  process.env.G_SCOPES.split(',')
+        scopes:  process.env.G_SCOPES ? process.env.G_SCOPES.split(',') : []
     },
     g_files: {
         folderId: process.env.G_FOLDER_ID,
         fileId: process.env.G_FILE_ID,
         fileIdResp: process.env.G_FILE_ID_RESPALDO,
         fileIdBoda: process.env.G_FILE_ID_BODA,
+        fileIdAppP: process.env.G_FILE_ID_PENDIENTES,
         rangeGuide: process.env.G_GUIDE_RANGE,
         statusRange: process.env.G_STATUS_RANGE
     },

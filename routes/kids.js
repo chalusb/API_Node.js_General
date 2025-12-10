@@ -11,7 +11,7 @@ const { json } = require('body-parser');
 
 router.get('/getkids', async(req,res) => {
         try {
-            const res_gd = await goo.readFileRange(g_files.fileId,"Hoja1","A1:J");
+            const res_gd = await goo.readFileRange(g_files.fileId,"Hoja1","A1:O");
             const cols = res_gd.shift()
             const uts = utils.arrayToJson(cols ,res_gd);
             return res.status(200).json({ status: 'success', data: uts });
@@ -284,7 +284,9 @@ router.post('/setAsist', async (req, res) => {
         }
 
         // Convertir los datos a un formato de array que Google Sheets pueda entender
-        const obj_ins = kids_data.map(e => Object.values(e));
+        const obj_ins = kids_data.map((row) =>
+            cols.map((key) => (row[key] !== undefined ? row[key] : ""))
+        );
         // Actualizar el archivo de Google Sheets con los nuevos datos
         const res_uk = await goo.updateFile(g_files.fileId, "Hoja1", "A2:K", obj_ins);
         const res_ukRes = await goo.updateFile(g_files.fileIdResp, "Hoja1", "A2:K", obj_ins);
@@ -347,7 +349,9 @@ router.post('/removeAsist', async (req, res) => {
         }
 
         // Convertir los datos a un formato de array que Google Sheets pueda entender
-        const obj_ins = kids_data.map(e => Object.values(e));
+        const obj_ins = kids_data.map((row) =>
+            cols.map((key) => (row[key] !== undefined ? row[key] : ""))
+        );
         // Actualizar el archivo de Google Sheets con los nuevos datos
         const res_uk = await goo.updateFile(g_files.fileId, "Hoja1", "A2:K", obj_ins);
 
@@ -361,7 +365,7 @@ router.post('/removeAsist', async (req, res) => {
 
 router.post('/setAsistAcomodo', async (req, res) => {
     try {
-        const res_gd = await goo.readFileRange(g_files.fileId, "Hoja1", "A1:N"); // Leer datos del archivo
+        const res_gd = await goo.readFileRange(g_files.fileId, "Hoja1", "A1:O"); // Leer datos del archivo
         const cols = res_gd.shift(); // Obtener encabezados
         let kids_data = utils.arrayToJson(cols, res_gd); // Convertir a JSON
         const errors = [];
@@ -425,10 +429,12 @@ router.post('/setAsistAcomodo', async (req, res) => {
         });
 
         // Convertir los datos a un array para Google Sheets
-        const obj_ins = kids_data.map(e => Object.values(e));
+        const obj_ins = kids_data.map((row) =>
+            cols.map((key) => (row[key] !== undefined ? row[key] : ""))
+        );
 
         // Actualizar el archivo de Google Sheets
-        await goo.updateFile(g_files.fileId, "Hoja1", "A2:N", obj_ins);
+        await goo.updateFile(g_files.fileId, "Hoja1", "A2:O", obj_ins);
 
         // Respuesta exitosa
         return res.status(200).json({ status: 'success', data: arr_kids });
@@ -438,6 +444,85 @@ router.post('/setAsistAcomodo', async (req, res) => {
             status: 'error',
             message: error.message,
             stack: error.stack,
+        });
+    }
+});
+
+router.get('/acomodo/list', async (req, res) => {
+    try {
+        const res_gd = await goo.readFileRange(g_files.fileId, "Hoja1", "A1:O");
+        const cols = res_gd.shift();
+        const kids = utils
+            .arrayToJson(cols, res_gd)
+            .map(e => cleanObjectFields(e))
+            .map(e => cleanObjectKeys(e));
+
+        return res.status(200).json({ status: 'success', data: kids });
+    } catch (error) {
+        return res.status(400).json({
+            status: 'error',
+            message: error.message,
+        });
+    }
+});
+
+router.post('/acomodo/toggle', async (req, res) => {
+    try {
+        const clave = (req.body.clave || '').trim();
+        if (!clave) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'La CLAVE es obligatoria.',
+            });
+        }
+
+        const desiredStatus =
+            req.body.status === 1 ||
+            req.body.status === '1' ||
+            req.body.status === true
+                ? '1'
+                : '0';
+
+        const res_gd = await goo.readFileRange(g_files.fileId, 'Hoja1', 'A1:O');
+        const cols = res_gd.shift();
+        let kids_data = utils.arrayToJson(cols, res_gd);
+
+        const index = kids_data.findIndex(
+            kid => (kid.CLAVE || '').trim() === clave
+        );
+
+        if (index === -1) {
+            return res.status(404).json({
+                status: 'error',
+                message: `La CLAVE ${clave} no existe.`,
+            });
+        }
+
+        if ((kids_data[index].LLEGO || '0') !== '1') {
+            return res.status(400).json({
+                status: 'error',
+                message: `El registro ${clave} aun no ha sido marcado como llegado.`,
+            });
+        }
+
+        const timestamp = desiredStatus === '1' ? formatDate() : '';
+        kids_data[index].LLEGO_ACOMODO = desiredStatus;
+        kids_data[index].HORA_LLEGADA_ACOMODO = timestamp;
+
+        const obj_ins = kids_data.map(row =>
+            cols.map(col => row[col] || '')
+        );
+
+        await goo.updateFile(g_files.fileId, 'Hoja1', 'A2:O', obj_ins);
+
+        return res.status(200).json({
+            status: 'success',
+            data: kids_data[index],
+        });
+    } catch (error) {
+        return res.status(400).json({
+            status: 'error',
+            message: error.message,
         });
     }
 });
@@ -482,8 +567,8 @@ router.post('/getPDFbyClave', async (req, res) => {
             height: logoHeight
         });
 
-        // Agregar el texto "CONAVI 2024" debajo del logo, centrado
-        current_page.drawText("CoNavi 2024", {
+        // Agregar el texto "CONAVI 2025" debajo del logo, centrado
+        current_page.drawText("CoNavi 2025", {
             x: (width - 100) / 2,  // Centrar el texto horizontalmente
             y: height - logoHeight - 90,  // Justo debajo del logo
             size: 14,  // Tamaño reducido del texto
