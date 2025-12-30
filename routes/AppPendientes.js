@@ -2269,6 +2269,17 @@ const exportDebtDocument = (doc) => {
   };
 };
 
+async function resolveDebtDocument(database, debtId) {
+  for (const collectionName of DEBTS_COLLECTION_CANDIDATES) {
+    const docRef = database.collection(collectionName).doc(debtId);
+    const snapshot = await docRef.get();
+    if (snapshot.exists) {
+      return { docRef, snapshot, collectionName };
+    }
+  }
+  return null;
+}
+
 router.get('/debts', async (req, res) => {
   try {
     const database = ensureDb(res);
@@ -2379,6 +2390,123 @@ router.post('/debts', async (req, res) => {
   } catch (error) {
     console.error('[DEBTS] create error', error);
     return res.status(500).json({ status: 'error', message: 'Error al registrar la deuda', error: error.message });
+  }
+});
+
+router.put('/debts/:id', async (req, res) => {
+  try {
+    const database = ensureDb(res);
+    if (!database) return;
+
+    const rawId = req.params && req.params.id ? req.params.id : '';
+    const trimmedId = toTrimmedString(rawId);
+    if (!trimmedId) {
+      return res.status(400).json({ status: 'error', message: 'Identificador de deuda invalido' });
+    }
+
+    const payload = req.body && req.body.data ? req.body.data : req.body;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return res.status(400).json({ status: 'error', message: 'El cuerpo debe ser un objeto' });
+    }
+
+    const result = await resolveDebtDocument(database, trimmedId);
+    if (!result) {
+      return res.status(404).json({ status: 'error', message: 'Movimiento no encontrado' });
+    }
+
+    const updates = {};
+    if (Object.prototype.hasOwnProperty.call(payload, 'title') || Object.prototype.hasOwnProperty.call(payload, 'name')) {
+      const rawTitle =
+        typeof payload.title === 'string'
+          ? payload.title
+          : typeof payload.name === 'string'
+            ? payload.name
+            : '';
+      const title = rawTitle.trim();
+      if (!title) {
+        return res.status(400).json({ status: 'error', message: 'El campo "title" es requerido' });
+      }
+      updates.title = title;
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(payload, 'amount') ||
+      Object.prototype.hasOwnProperty.call(payload, 'monto') ||
+      Object.prototype.hasOwnProperty.call(payload, 'value')
+    ) {
+      const amount = normalizeDebtAmount(payload.amount ?? payload.monto ?? payload.value);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return res.status(400).json({ status: 'error', message: 'El monto debe ser un numero mayor que cero' });
+      }
+      updates.amount = amount;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(payload, 'type')) {
+      updates.type = normalizeDebtType(payload.type);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(payload, 'date') || Object.prototype.hasOwnProperty.call(payload, 'fecha')) {
+      updates.date = normalizeDebtDate(payload.date ?? payload.fecha);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(payload, 'notes') || Object.prototype.hasOwnProperty.call(payload, 'description')) {
+      const notes =
+        typeof payload.notes === 'string'
+          ? payload.notes.trim()
+          : typeof payload.description === 'string'
+            ? payload.description.trim()
+            : '';
+      updates.notes = notes || null;
+    }
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ status: 'error', message: 'No hay cambios para aplicar' });
+    }
+
+    updates.updatedAt = nowIso();
+
+    await result.docRef.set(updates, { merge: true });
+    const updatedSnap = await result.docRef.get();
+    const updated = exportDebtDocument(updatedSnap);
+
+    try {
+      await notifyEntityUpdated({
+        title: 'Movimiento actualizado',
+        body: updated.title || 'Se actualizo un movimiento de deuda.',
+        data: { entity: 'debt', id: trimmedId, amount: updated.amount, type: updated.type },
+      });
+    } catch (notifyError) {
+      console.warn('[DEBTS] notify update error', notifyError);
+    }
+
+    return res.status(200).json({ status: 'success', data: updated });
+  } catch (error) {
+    console.error('[DEBTS] update error', error);
+    return res.status(500).json({ status: 'error', message: 'Error al actualizar la deuda', error: error.message });
+  }
+});
+
+router.delete('/debts/:id', async (req, res) => {
+  try {
+    const database = ensureDb(res);
+    if (!database) return;
+
+    const rawId = req.params && req.params.id ? req.params.id : '';
+    const trimmedId = toTrimmedString(rawId);
+    if (!trimmedId) {
+      return res.status(400).json({ status: 'error', message: 'Identificador de deuda invalido' });
+    }
+
+    const result = await resolveDebtDocument(database, trimmedId);
+    if (!result) {
+      return res.status(404).json({ status: 'error', message: 'Movimiento no encontrado' });
+    }
+
+    await result.docRef.delete();
+    return res.status(200).json({ status: 'success', message: 'Movimiento eliminado' });
+  } catch (error) {
+    console.error('[DEBTS] delete error', error);
+    return res.status(500).json({ status: 'error', message: 'Error al eliminar la deuda', error: error.message });
   }
 });
 
