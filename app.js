@@ -38,6 +38,7 @@ app.use('/boda',require('./routes/boda'));
 app.use('/exagono',require('./routes/exagono'));
 app.use('/AppP',require('./routes/AppPendientes'));
 app.use('/AppP', require('./routes/pushNotifications'));
+app.use('/AppP_V2', require('./routes/AppPendientes_V2_WEB'));
 
 //Public
 app.use(express.static('public'));
