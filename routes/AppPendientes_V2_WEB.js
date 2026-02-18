@@ -2703,6 +2703,39 @@ router.patch('/couples/:id', async (req, res) => {
   }
 });
 
+router.delete('/couples/:id', async (req, res) => {
+  const database = ensureDb(res);
+  if (!database) return;
+  try {
+    const coupleId = req.params.id;
+    const collectionsToClean = [
+      COUPLE_MEMBERS_COLLECTION,
+      GOALS_COLLECTION,
+      CHECKINS_COLLECTION,
+      ROUTINES_COLLECTION,
+      MESSAGES_COLLECTION,
+      ROUTINE_LOGS_COLLECTION,
+    ];
+
+    for (const collectionName of collectionsToClean) {
+      const snapshot = await database
+        .collection(collectionName)
+        .where('coupleId', '==', coupleId)
+        .get();
+      if (!snapshot.empty) {
+        const batch = database.batch();
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
+    }
+
+    await database.collection(COUPLES_COLLECTION).doc(coupleId).delete();
+    res.json({ status: 'ok', message: 'Pareja eliminada' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
 router.get('/couples/:id/members', async (req, res) => {
   const database = ensureDb(res);
   if (!database) return;
@@ -2741,6 +2774,42 @@ router.post('/couples/:id/members', async (req, res) => {
   }
 });
 
+router.patch('/couples/:id/members/:memberId', async (req, res) => {
+  const database = ensureDb(res);
+  if (!database) return;
+  try {
+    const update = { ...req.body, updatedAt: nowIso() };
+    await database
+      .collection(COUPLE_MEMBERS_COLLECTION)
+      .doc(req.params.memberId)
+      .set(update, { merge: true });
+    const doc = await database
+      .collection(COUPLE_MEMBERS_COLLECTION)
+      .doc(req.params.memberId)
+      .get();
+    if (!doc.exists) {
+      return res.status(404).json({ status: 'error', message: 'Miembro no encontrado' });
+    }
+    res.json({ status: 'ok', data: { id: doc.id, ...doc.data() } });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+router.delete('/couples/:id/members/:memberId', async (req, res) => {
+  const database = ensureDb(res);
+  if (!database) return;
+  try {
+    await database
+      .collection(COUPLE_MEMBERS_COLLECTION)
+      .doc(req.params.memberId)
+      .delete();
+    res.json({ status: 'ok', message: 'Miembro eliminado' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
 router.get('/couples/:id/goals', async (req, res) => {
   const database = ensureDb(res);
   if (!database) return;
@@ -2748,7 +2817,6 @@ router.get('/couples/:id/goals', async (req, res) => {
     const snapshot = await database
       .collection(GOALS_COLLECTION)
       .where('coupleId', '==', req.params.id)
-      .orderBy('createdAt', 'desc')
       .limit(parseLimit(req.query.limit, 50))
       .get();
     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -2805,7 +2873,6 @@ router.get('/couples/:id/checkins', async (req, res) => {
     const snapshot = await database
       .collection(CHECKINS_COLLECTION)
       .where('coupleId', '==', req.params.id)
-      .orderBy('date', 'desc')
       .limit(parseLimit(req.query.limit, 30))
       .get();
     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -2844,7 +2911,6 @@ router.get('/couples/:id/routines', async (req, res) => {
     const snapshot = await database
       .collection(ROUTINES_COLLECTION)
       .where('coupleId', '==', req.params.id)
-      .orderBy('createdAt', 'desc')
       .limit(parseLimit(req.query.limit, 50))
       .get();
     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -2948,7 +3014,6 @@ router.get('/couples/:id/messages', async (req, res) => {
     const snapshot = await database
       .collection(MESSAGES_COLLECTION)
       .where('coupleId', '==', req.params.id)
-      .orderBy('createdAt', 'desc')
       .limit(parseLimit(req.query.limit, 50))
       .get();
     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
