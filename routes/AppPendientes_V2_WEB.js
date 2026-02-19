@@ -2870,9 +2870,13 @@ router.get('/couples/:id/checkins', async (req, res) => {
   const database = ensureDb(res);
   if (!database) return;
   try {
-    const snapshot = await database
+    let query = database
       .collection(CHECKINS_COLLECTION)
-      .where('coupleId', '==', req.params.id)
+      .where('coupleId', '==', req.params.id);
+    if (req.query.memberId) {
+      query = query.where('memberId', '==', String(req.query.memberId));
+    }
+    const snapshot = await query
       .limit(parseLimit(req.query.limit, 30))
       .get();
     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -2886,7 +2890,7 @@ router.post('/couples/:id/checkins', async (req, res) => {
   const database = ensureDb(res);
   if (!database) return;
   try {
-    const { mood, note, date } = req.body || {};
+    const { mood, note, date, memberId, memberName } = req.body || {};
     if (!mood) {
       return res.status(400).json({ status: 'error', message: 'Mood requerido' });
     }
@@ -2895,6 +2899,8 @@ router.post('/couples/:id/checkins', async (req, res) => {
       mood: String(mood),
       note: note || '',
       date: toISODate(date) || nowIso(),
+      memberId: memberId ? String(memberId) : null,
+      memberName: memberName ? String(memberName) : null,
       createdAt: nowIso(),
     };
     const docRef = await database.collection(CHECKINS_COLLECTION).add(payload);

@@ -32,6 +32,11 @@ app.use((req, res, next) => {
     next();
 });
 
+// Preflight requests
+app.options('*', (req, res) => {
+    res.sendStatus(204);
+});
+
 //Routes
 app.use('/kids',require('./routes/kids'));
 app.use('/boda',require('./routes/boda'));
