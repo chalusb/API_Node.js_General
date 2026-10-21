@@ -132,3 +132,4 @@ dist
 # Variables locales (en producción viven en Railway)
 .env
 .env.*
+!.env.example

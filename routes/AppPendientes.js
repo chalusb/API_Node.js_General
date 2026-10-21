@@ -1,8 +1,6 @@
-﻿"use strict";
-const fs = require('fs');
+"use strict";
 const express = require('express');
 const goo = require('./../core/google/googleDrive');
-const utils = require('./../core/utils');
 const { g_files } = require('./../keys');
 const router = express.Router();
 const pushNotificationsRouter = require('./pushNotifications');
@@ -11,9 +9,6 @@ const deliverNotification =
     ? pushNotificationsRouter.deliverNotification
     : null;
 router.use('/notifications', pushNotificationsRouter);
-const { PDFDocument, rgb, StandardFonts, degrees, TextAlignment } = require('pdf-lib');
-const QRCode = require('qrcode');
-const { json } = require('body-parser');
 
 // Firestore (optional new backend)
 let db;
