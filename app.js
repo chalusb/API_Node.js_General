@@ -40,7 +40,7 @@ app.options('*', (req, res) => {
 //Routes
 app.use('/kids',require('./routes/kids'));
 app.use('/boda',require('./routes/boda'));
-app.use('/exagono',require('./routes/exagono'));
+app.use('/PaginaCapital', require('./routes/PaginaCapital'));
 app.use('/AppP',require('./routes/AppPendientes'));
 app.use('/AppP', require('./routes/pushNotifications'));
 app.use('/AppP_V2', require('./routes/AppPendientes_V2_WEB'));
